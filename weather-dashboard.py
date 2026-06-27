@@ -74,9 +74,39 @@ with forecast_container.container():
     with st.spinner("Fetching forecast..."):
         today_forecast = get_forecast()
     with fore_col1:
-        if today_forecast.startswith("Connection failed:"):
+        if not isinstance(today_forecast, dict):
             st.error(today_forecast)
         else:
+            
+            forecast_period = today_forecast.get("forecastPeriod", "No forecast period") # -- Time period of forecast
+            forecast_Area1 = today_forecast.get("forecastArea1", "No forecast Area") # -- Trinidad & Tobago
+            forecast_A1 = today_forecast.get("textArea1", "No forecast") # -- Trinidad & Tobago forecast
+            forecast_Area2 = today_forecast.get("forecastArea2","No forecast Area") # -- Windward Islands
+            forecast_A2 = today_forecast.get("textArea2", "No forecast") # -- Windward Islands forecast
+            forecast_Area3 = today_forecast.get("forecastArea3", "No forecast Area") # -- Leeward Islands
+            forecast_A3 = today_forecast.get("textArea3", "No forecast") # -- Leeward Islands forecast
+            seas_forecast = today_forecast.get("seas", "No seas forecast") # -- Seas status
+            waves_forecast_1 = today_forecast.get("waves1", "No open seas forecast") # -- Waves in open waters forecast
+            waves_forecast_2 = today_forecast.get("waves2", "No sheltered seas forecast") # -- Waves in sheltered waters forecast
+            trinidad_max_temp = today_forecast.get("PiarcoFcstMxTemp", "No Trinidad Max temperature") # -- Trinidad High Temperature
+            tobago_max_temp = today_forecast.get("CrownFcstMxTemp", "No Tobago Max temperature") # -- Tobago High Temperature """
+
+            forecast_period = " ".join(forecast_period.split())
+            forecast_Area1 = " ".join(forecast_Area1.split())
+            forecast_A1 = " ".join(forecast_A1.split())
+            forecast_Area2 = " ".join(forecast_Area2.split())
+            forecast_A2 = " ".join(forecast_A2.split())
+            forecast_Area3 = " ".join(forecast_Area3.split())
+            forecast_A3 = " ".join(forecast_A3.split())
+            seas_forecast = " ".join(seas_forecast.split())
+            waves_forecast_1 = " ".join(waves_forecast_1.split())
+            waves_forecast_2 = " ".join(waves_forecast_2.split())
+            trinidad_max_temp = " ".join(trinidad_max_temp.split())
+            tobago_max_temp = " ".join(tobago_max_temp.split())
+
+            today_forecast = "For the period "+ forecast_period +" "+ forecast_Area1 +" "+ forecast_A1 + forecast_Area2 +" "+ forecast_A2 + forecast_Area3 +" "+ forecast_A3 + ". Seas are "+ seas_forecast+ ", with waves "+ waves_forecast_1+" in open waters and "+waves_forecast_2+" in sheltered areas"
+            today_max_temps = "\n\nThe high temperature in Trinidad is "+ trinidad_max_temp + " deg C and "+tobago_max_temp + " deg C in Tobago"
+            today_forecast = today_forecast + today_max_temps
             st.text(today_forecast)
 
     with fore_col2:
