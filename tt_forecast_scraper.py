@@ -3,7 +3,7 @@ import requests
 import json
 
 
-API_URL = "https://api.open-meteo.com/v1/forecast?latitude=10.4611&longitude=-61.257&daily=weather_code,temperature_2m_max,temperature_2m_min&models=gfs_seamless&timezone=auto"
+API_URL = "https://api.open-meteo.com/v1/forecast?latitude=10.4611&longitude=-61.257&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto"
 
 @st.cache_data(ttl=3600)
 def get_five_day_forecast():
