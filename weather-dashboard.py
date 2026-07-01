@@ -1,9 +1,7 @@
 import streamlit as st
 from tt_weather_alert_scraper import check_tt_alerts
 from tt_forecast_scraper import get_forecast, get_five_day_forecast
-from gtts import gTTS
-from io import BytesIO
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 st.set_page_config(
     page_title= "TT Weather Monitor",
@@ -40,10 +38,21 @@ st.title("⛅Trinidad & Tobago Weather Monitor🌩️")
 alerts_container = st.empty() #Alerts box
 with alerts_container.container():
     with st.spinner("Fetching alerts..."):
-        ret_string = check_tt_alerts()
-    st.info(ret_string)
+        active_watches, active_warnings = check_tt_alerts()
+    if active_warnings and len(active_warnings) > 0:
+        with st.expander("🚨URGENT WEATHER WARNINGS!!🚨", expanded=True):
+            for warning in active_warnings:
+                st.error(warning)
+    
+    if active_watches and len(active_watches) > 0:
+        with st.expander("⏳ MONITORING: Upcoming Advisories (Next 7-24 Hours)", expanded=False):
+            for watch in active_watches:
+                st.info(watch)
 
+    if (not active_watches and not active_warnings) or (active_warnings == [] and active_watches == []):
+         st.success("✅ No weather hazards expected over the next 24 hours.")
 
+    st.markdown(f"<span style='font-weight:bold;'> For official weather alerts, check the <a href='https://metoffice.gov.tt/' target='_blank'>Trinidad & Tobago Meteorological Service website</a> </span>", unsafe_allow_html=True)
 st.subheader("Current Satellite Outlook")
 satellite_container = st.empty() #Satellite Image box
 
@@ -68,55 +77,50 @@ with satellite_container.container():
         st.iframe(temp_url)
 
 st.subheader("Today's Forecast")
-forecast_container = st.empty() #Forecast container
-with forecast_container.container():
-    fore_col1, fore_col2 = st.columns([2,1])
-    with st.spinner("Fetching forecast..."):
-        today_forecast = get_forecast()
-    with fore_col1:
-        if not isinstance(today_forecast, dict):
-            st.error(today_forecast)
-        else:
+forecast_container = st.empty() #Hourly Forecast container
+
+#Fetch hourly weather data
+today_date = datetime.now()
+with st.spinner(f"Fetching hourly weather forecast for {today_date.strftime("%a %d %Y")}"):
+    hourly_weather_data = get_forecast()
+if "error" in hourly_weather_data:
+    with forecast_container.container(): 
+        st.error(hourly_weather_data["error"])
+else:
+    with forecast_container.container():
+        hours_col = st.columns(8, border=True)
+        
+        now = datetime.now(timezone(timedelta(hours=-4))) # get current time for Trinidad and Tobago
+        
+        # 2. Calculate the next immediate hour
+        # Replace minutes, seconds, and microseconds with 0, then add 1 hour
+        next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        
+        #Get hours time data from API
+        hours_data = hourly_weather_data["hourly"]
+        hours_time = hours_data["time"]
+        hours_weather_code = hours_data["weather_code"]
+        hours_temperature = hours_data["temperature_2m"]
+        hours_precipitation_prob = hours_data["precipitation_probability"]
+        
+
+        hours_list = []
+        for i in range(8):
+            hours_list.append(next_hour + timedelta(hours=i))
+            for j in range(len(hours_time)):
+                if hours_list[i].strftime("%I %p") == datetime.strptime(hours_time[j], "%Y-%m-%dT%H:%M").strftime("%I %p"):
+                    with hours_col[i]:
+                        st.markdown(f"### {hours_list[i].strftime("%I %p")}")
+                        hour_weather_assets = WEATHER_INTERPRETATION_MAP.get(hours_weather_code[j], fallback)
+                        st.markdown(f"<h1 style='margin:0;'>{hour_weather_assets['emoji']}</h1>", unsafe_allow_html=True)
+                        st.markdown(f"<span style='color:{hour_weather_assets['color']}; font-weight:bold;'>{hour_weather_assets['desc']}</span>", unsafe_allow_html=True)
+                        st.markdown(f"<span style='font-weight:bold;'>Temp: {hours_temperature[j]} C</span>", unsafe_allow_html=True)
+                        st.markdown(f"<span>Rain Chance: {hours_precipitation_prob[j]} %</span>", unsafe_allow_html=True)
+
             
-            forecast_period = today_forecast.get("forecastPeriod", "No forecast period") # -- Time period of forecast
-            forecast_Area1 = today_forecast.get("forecastArea1", "No forecast Area") # -- Trinidad & Tobago
-            forecast_A1 = today_forecast.get("textArea1", "No forecast") # -- Trinidad & Tobago forecast
-            forecast_Area2 = today_forecast.get("forecastArea2","No forecast Area") # -- Windward Islands
-            forecast_A2 = today_forecast.get("textArea2", "No forecast") # -- Windward Islands forecast
-            forecast_Area3 = today_forecast.get("forecastArea3", "No forecast Area") # -- Leeward Islands
-            forecast_A3 = today_forecast.get("textArea3", "No forecast") # -- Leeward Islands forecast
-            seas_forecast = today_forecast.get("seas", "No seas forecast") # -- Seas status
-            waves_forecast_1 = today_forecast.get("waves1", "No open seas forecast") # -- Waves in open waters forecast
-            waves_forecast_2 = today_forecast.get("waves2", "No sheltered seas forecast") # -- Waves in sheltered waters forecast
-            trinidad_max_temp = today_forecast.get("PiarcoFcstMxTemp", "No Trinidad Max temperature") # -- Trinidad High Temperature
-            tobago_max_temp = today_forecast.get("CrownFcstMxTemp", "No Tobago Max temperature") # -- Tobago High Temperature """
+            
 
-            forecast_period = " ".join(forecast_period.split())
-            forecast_Area1 = " ".join(forecast_Area1.split())
-            forecast_A1 = " ".join(forecast_A1.split())
-            forecast_Area2 = " ".join(forecast_Area2.split())
-            forecast_A2 = " ".join(forecast_A2.split())
-            forecast_Area3 = " ".join(forecast_Area3.split())
-            forecast_A3 = " ".join(forecast_A3.split())
-            seas_forecast = " ".join(seas_forecast.split())
-            waves_forecast_1 = " ".join(waves_forecast_1.split())
-            waves_forecast_2 = " ".join(waves_forecast_2.split())
-            trinidad_max_temp = " ".join(trinidad_max_temp.split())
-            tobago_max_temp = " ".join(tobago_max_temp.split())
-
-            today_forecast = "For the period "+ forecast_period +" "+ forecast_Area1 +" "+ forecast_A1 + forecast_Area2 +" "+ forecast_A2 + forecast_Area3 +" "+ forecast_A3 + ". Seas are "+ seas_forecast+ ", with waves "+ waves_forecast_1+" in open waters and "+waves_forecast_2+" in sheltered areas"
-            today_max_temps = "\n\nThe high temperature in Trinidad is "+ trinidad_max_temp + " deg C and "+tobago_max_temp + " deg C in Tobago"
-            today_forecast = today_forecast + today_max_temps
-            st.text(today_forecast)
-
-    with fore_col2:
-        if not today_forecast.startswith("Connection failed:"):
-            st.markdown("Audio forecast")
-            audio_buffer = BytesIO()
-            tts = gTTS(text=today_forecast, lang="en")
-            tts.write_to_fp(audio_buffer)
-            audio_buffer.seek(0)
-            st.audio(audio_buffer, format="audio/mp3")
+    
 
 st.subheader("Five Day Forecast")
 five_day_forecast = st.empty() #Five-day forecast container
